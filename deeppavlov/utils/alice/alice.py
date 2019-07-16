@@ -28,6 +28,7 @@ from deeppavlov.agents.processors.default_rich_content_processor import DefaultR
 from deeppavlov.core.agent import Agent
 from deeppavlov.core.agent.rich_content import RichMessage
 from deeppavlov.core.common.paths import get_settings_path
+from deeppavlov.core.common.chainer import Chainer
 from deeppavlov.skills.default_skill.default_skill import DefaultStatelessSkill
 from deeppavlov.utils.server.server import get_server_params
 
@@ -43,8 +44,7 @@ DialogID = namedtuple('DialogID', ['user_id', 'session_id'])
 
 
 def interact_alice(agent: Agent):
-    """
-    Exchange messages between basic pipelines and the Yandex.Dialogs service.
+    """ Exchange messages between basic pipelines and the Yandex.Dialogs service.
     If the pipeline returns multiple values, only the first one is forwarded to Yandex.
     """
     data = request.get_json()
@@ -68,9 +68,9 @@ def interact_alice(agent: Agent):
             'user_id': user_id
         },
         'version': '1.0'
-    }
+    } # type:dict
 
-    agent_response: Union[str, RichMessage] = agent([payload or text], [dialog_id])[0]
+    agent_response = agent([payload or text], [dialog_id])[0] # type: Union[str, RichMessage]
     if isinstance(agent_response, RichMessage):
         response['response']['text'] = '\n'.join([j['content']
                                                   for j in agent_response.json()
@@ -80,51 +80,76 @@ def interact_alice(agent: Agent):
 
     return jsonify(response), 200
 
+def start_alice_server_(model:Chainer,
+                        host, model_endpoint,
+                        https=False, ssl_key=None, ssl_cert=None, port=None) -> None:
+    """ Start Alice server for the `model` instance of `Chainer` class """
+    skill = DefaultStatelessSkill(model, lang='ru')
+    agent = DefaultAgent([skill], skills_processor=DefaultRichContentWrapper())
+    start_agent_server(agent, host, port, model_endpoint, ssl_key, ssl_cert)
 
-def start_alice_server(model_config, https=False, ssl_key=None, ssl_cert=None, port=None):
+def start_alice_server(model_config, https=False, ssl_key=None, ssl_cert=None, port=None) -> None:
+    """ Builds a model from  model_config and starts Alice agent server for it.
+    The model is wrapped in default skill and agent containers.
+    """
     server_config_path = get_settings_path() / SERVER_CONFIG_FILENAME
     server_params = get_server_params(server_config_path, model_config)
 
     https = https or server_params['https']
+    host = server_params['host']
+    port = port or server_params['port']
+    model_endpoint = server_params['model_endpoint']
 
     if not https:
         ssl_key = ssl_cert = None
     else:
         ssh_key = Path(ssl_key or server_params['https_key_path']).resolve()
         if not ssh_key.is_file():
-            e = FileNotFoundError('Ssh key file not found: please provide correct path in --key param or '
-                                  'https_key_path param in server configuration file')
+            e = FileNotFoundError(' '.join(['SSH key file not found: please provide',
+                                  'correct path in `ssl_key` argument or `--key` param or',
+                                  '`https_key_path` param in server configuration file']))
             log.error(e)
             raise e
 
         ssh_cert = Path(ssl_cert or server_params['https_cert_path']).resolve()
         if not ssh_cert.is_file():
-            e = FileNotFoundError('Ssh certificate file not found: please provide correct path in --cert param or '
-                                  'https_cert_path param in server configuration file')
+            e = FileNotFoundError(' '.join(['SSH certificate file not found: please provide',
+                                  'correct path in `ssl_cert` argument or in `--cert` param or',
+                                  'in `https_cert_path` param in server configuration file']))
             log.error(e)
             raise e
 
-    host = server_params['host']
-    port = port or server_params['port']
-    model_endpoint = server_params['model_endpoint']
-
     model = build_model(model_config)
-    skill = DefaultStatelessSkill(model, lang='ru')
-    agent = DefaultAgent([skill], skills_processor=DefaultRichContentWrapper())
-
-    start_agent_server(agent, host, port, model_endpoint, ssl_key, ssl_cert)
+    start_alice_server_(model, host, model_endpoint, https=https,
+                        ssl_key=ssl_key, ssl_cert=ssl_cert, port=port)
 
 
 def start_agent_server(agent: Agent, host: str, port: int, endpoint: str,
                        ssl_key: Optional[Path] = None,
-                       ssl_cert: Optional[Path] = None):
+                       ssl_cert: Optional[Path] = None) -> None:
+    """ Start a swagger-instance of Alice agent server.
+    Ther server instance accepts POST requests as described in 'example' field
+    of the `endpoint_description` variable (see the code). In order to use SSL,
+    both `ssl_key` and `ssl_cert` should be set.
+
+    Args:
+
+        `agent`    : Agent class instance to send requests to
+        `host`     : Host or IP address to bind server to
+        `port`     : TCP Port to bind server to
+        `endpoint` : Name of endpoint of this agent
+        `ssl_key`  : Optional path to SSL key file
+        `ssl_cert` : Optional path to SSL ceritifcates file
+
+    TODO: document the format of the response
+    """
+
+    ssl_context = None # type: Optional[ssl.SSLContext]
     if ssl_key and ssl_cert:
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         ssh_key_path = Path(ssl_key).resolve()
         ssh_cert_path = Path(ssl_cert).resolve()
-        ssl_context.load_cert_chain(ssh_cert_path, ssh_key_path)
-    else:
-        ssl_context = None
+        ssl_context.load_cert_chain(str(ssh_cert_path), str(ssh_key_path))
 
     @app.route('/')
     def index():
@@ -175,4 +200,7 @@ def start_agent_server(agent: Agent, host: str, port: int, endpoint: str,
     def answer():
         return interact_alice(agent)
 
-    app.run(host=host, port=port, threaded=False, ssl_context=ssl_context)
+    app.run(host=host, port=port, threaded=False,
+            ssl_context=ssl_context,
+            use_reloader=False, debug=False)
+

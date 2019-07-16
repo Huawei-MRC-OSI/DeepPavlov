@@ -127,9 +127,11 @@ def test_interact(model: Chainer, params_names: List[str]) -> Tuple[Response, in
         return Response('["Test failed"]\n'), 400
 
 
-def start_model_server(model_config, https=False, ssl_key=None, ssl_cert=None, port=None):
-    server_config_path = get_settings_path() / SERVER_CONFIG_FILENAME
-    server_params = get_server_params(server_config_path, model_config)
+def start_model_server_(model:Chainer,
+                        https=False,
+                        ssl_key=None,
+                        ssl_cert=None,
+                        port=None)->None:
 
     host = server_params['host']
     port = port or server_params['port']
@@ -147,15 +149,17 @@ def start_model_server(model_config, https=False, ssl_key=None, ssl_cert=None, p
     if https:
         ssh_key_path = Path(ssl_key or server_params['https_key_path']).resolve()
         if not ssh_key_path.is_file():
-            e = FileNotFoundError('Ssh key file not found: please provide correct path in --key param or '
-                                  'https_key_path param in server configuration file')
+            e = FileNotFoundError(' '.join(['SSH key file not found: please provide',
+                                  'correct path in --key param or',
+                                  'https_key_path param in server configuration file']))
             log.error(e)
             raise e
 
         ssh_cert_path = Path(ssl_cert or server_params['https_cert_path']).resolve()
         if not ssh_cert_path.is_file():
-            e = FileNotFoundError('Ssh certificate file not found: please provide correct path in --cert param or '
-                                  'https_cert_path param in server configuration file')
+            e = FileNotFoundError(' '.join(['SSH certificate file not found: please',
+                                  'provide correct path in --cert param or',
+                                  'https_cert_path param in server configuration file']))
             log.error(e)
             raise e
 
@@ -163,8 +167,6 @@ def start_model_server(model_config, https=False, ssl_key=None, ssl_cert=None, p
         ssl_context.load_cert_chain(ssh_cert_path, ssh_key_path)
     else:
         ssl_context = None
-
-    model = build_model(model_config)
 
     @app.route('/')
     def index():
@@ -197,3 +199,9 @@ def start_model_server(model_config, https=False, ssl_key=None, ssl_cert=None, p
         return test_interact(model, model_args_names)
 
     app.run(host=host, port=port, threaded=False, ssl_context=ssl_context)
+
+
+def start_model_server(model_config:str, **server_args) -> None:
+    model = build_model(model_config)
+    start_model_server_(model, **server_args)
+
