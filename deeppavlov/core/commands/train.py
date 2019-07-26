@@ -96,9 +96,11 @@ def train_evaluate_model_from_config(config: Union[str, Path, dict],
         else:
             iterator = get_iterator_from_config(config, data)
 
-    if 'train' not in config:
+    train_config = {} # type:dict
+    if 'train' in config:
+        train_config = config.get('train',{})
+    else:
         log.warning('Train config is missing. Populating with default values')
-    train_config = config.get('train')
 
     if start_epoch_num is not None:
         train_config['start_epoch_num'] = start_epoch_num
@@ -120,7 +122,7 @@ def train_evaluate_model_from_config(config: Union[str, Path, dict],
     if to_train:
         trainer.train(iterator)
 
-    res = {}
+    res = {} # type:dict
 
     if iterator is not None:
         if to_validate is not None:
