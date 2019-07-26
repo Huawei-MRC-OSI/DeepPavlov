@@ -31,6 +31,7 @@ def parse_metrics(metrics: Iterable[Union[str, dict]], in_y: List[str], out_vars
         f = get_metric_by_name(metric_name)
 
         inputs = metric.get('inputs', in_y + out_vars)
+        print('metric', metric_name, 'inputs', inputs)
         if isinstance(inputs, str):
             inputs = [inputs]
 

@@ -14,7 +14,7 @@
 
 import json
 from logging import getLogger
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from pathlib import Path
 
 from overrides import overrides
@@ -35,23 +35,27 @@ class SnipsReader(DatasetReader):
 
     # noinspection PyAttributeOutsideInit
     @overrides
-    def read(self, data_path: str, queries_per_intent: Optional[int] = None, test_validate_split: float = 0.5,
+    def read(self, data_path_str: str, queries_per_intent: Optional[int] = None, test_validate_split: float = 0.5,
              *args, **kwargs) -> \
-            Dict[str, List[Dict[str, Any]]]:
+            Dict[str, List[Dict[str, Union[str,Any]]]]:
         """
-        Each query in the output has the following form:
+        Return a train/valid/test tuple, where each item contains the list of
+        the following items:
+
             { 'intent': intent_name,
               'data': [ { 'text': text, ('entity': slot_name)? } ]
             }
 
         Args:
             data_path: A path to a folder with dataset files.
-            queries_per_intent: Number of queries to load for each intent. None to load all.
-                If the requested number is greater than available in file, all queries are returned.
-            test_validate_split: Proportion of `_validate` files to be used as test dataset (since Snips
-                is split into training and validation sets without a separate test set).
+            queries_per_intent: Number of queries to load for each intent. None
+                to load all.  If the requested number is greater than available
+                in file, all queries are returned.
+            test_validate_split: Proportion of `_validate` files to be used as
+                test dataset (since Snips is split into training and validation
+                sets without a separate test set).
         """
-        data_path = Path(data_path)
+        data_path = Path(data_path_str)
         intents = ['AddToPlaylist', 'BookRestaurant', 'GetWeather', 'PlayMusic',
                    'RateBook', 'SearchCreativeWork', 'SearchScreeningEvent']
 
@@ -62,14 +66,14 @@ class SnipsReader(DatasetReader):
             mark_done(data_path)
 
         use_full_file = queries_per_intent is None or queries_per_intent > 70
-        training_data = []
-        validation_data = []
-        test_data = []
+        training_data = []   # type:list
+        validation_data = [] # type:list
+        test_data = []       # type:list
 
         for intent in intents:
-            intent_path = data_path / intent
-            train_file_name = f"train_{intent}{'_full' if use_full_file else ''}.json"
-            validate_file_name = f"validate_{intent}.json"
+            intent_path = data_path / Path(intent)
+            train_file_name = Path(f"train_{intent}{'_full' if use_full_file else ''}.json")
+            validate_file_name = Path(f"validate_{intent}.json")
 
             train_queries = self._load_file(intent_path / train_file_name, intent, queries_per_intent)
             validate_queries = self._load_file(intent_path / validate_file_name, intent, queries_per_intent)

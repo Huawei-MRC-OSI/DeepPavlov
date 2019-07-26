@@ -1,4 +1,4 @@
-# Copyright 2019 Alexey Romanov
+# Copyright 2019 Sergey Mironov
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,18 +21,23 @@ from deeppavlov.core.common.registry import register
 from deeppavlov.core.data.data_learning_iterator import DataLearningIterator
 
 WordRepr = str
+Intent = str
 SlotRepr = str
-SentenceRepr = Tuple[List[WordRepr],List[SlotRepr]]
+SentenceRepr = Tuple[List[WordRepr],Tuple[Intent,List[SlotRepr]]]
 
-@register('snips_ner_iterator')
-class SnipsNerIterator(DataLearningIterator):
+@register('snips_intent_slot_iterator')
+class SnipsIntentSlotIterator(DataLearningIterator):
     @overrides
     def preprocess(self, data, *args, **kwargs)->List[SentenceRepr]:
-        """ Return list of 'sentences', where each 'sentence' is described by a
+        """
+        Return list of 'sentences', where each 'sentence' is described by a
         list of words and a list of BIO-encoded slots.
+
+        TODO: Override `gen_batches` and move below logic there.
         """
         result = []
         for query in data:
+            intent = query['intent']
             query = query['data']
             words = [] # type: List[str]
             slots = [] # type: List[str]
@@ -46,5 +51,6 @@ class SnipsNerIterator(DataLearningIterator):
                     slots += ['O'] * len(part_words)
                 words += part_words
 
-            result.append((words, slots))
+            result.append((words, (intent, slots)))
         return result
+

@@ -1,0 +1,58 @@
+{
+  "dataset_reader": {
+    "class_name": "snips_reader",
+    "data_path": "{DOWNLOADS_PATH}/squad/"
+  },
+
+  "dataset_iterator": {
+    "class_name": "snips_intent_slot_iterator",
+    "seed": 1337,
+    "shuffle": true
+  },
+
+  "chainer": {
+    "in": ["word_ids"],
+    "in_y": ["true_intent_id", "true_slot_ids"],
+
+    "pipe": [
+      {
+        "class_name": "intent_slot_classifier",
+        "id": "model",
+        "in": ["word_ids"],
+        "in_y": ["true_intent_id", "true_slot_ids"],
+        "out": ["pred_intent_id", "pred_slot_ids"]
+      }
+    ],
+    "out": ["pred_intent_id", "pred_slot_ids"]
+  },
+
+  "train": {
+    "show_examples": false,
+    "log_every_n_batches": 250,
+    "val_every_n_epochs": 1,
+    "batch_size": 4,
+    "metrics": [
+      {
+        "name": "accuracy",
+        "inputs": ["pred_intent_id", "true_intent_id"]
+      }
+    ],
+    "evaluation_targets": ["train","valid"],
+    "class_name": "nn_trainer"
+  },
+
+  "metadata": {
+    "variables": {
+      "ROOT_PATH": "~/.deeppavlov",
+      "DOWNLOADS_PATH": "{ROOT_PATH}/downloads",
+      "MODELS_PATH": "{ROOT_PATH}/models"
+    },
+    "requirements": [
+      "{DEEPPAVLOV_PATH}/requirements/tf.txt"
+    ],
+    "labels": {},
+    "download": [
+    ]
+  }
+}
+
