@@ -20,17 +20,28 @@ from deeppavlov.core.common.registry import register
 
 from typing import List,Any
 
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras import layers
+from tensorflow.keras import models
+
 @register('intent_slot_classifier')
 class IntentSlotClassifier(LRScheduledModel):
     def __init__(self, *args, **kwargs):
-        print('intent_slot_classifier created')
+        inputs = layers.Input(shape=(None,))
+        embed = layers.Embedding(5000, 18, mask_zero=True)(inputs)
+        rnn_intents = layers.Bidirectional(layers.RNN(layers.GRUCell(256)))(embed)
+        result_intents = layers.Dense(7, activation='softmax')(rnn_intents)
+        rnn_slots = layers.Bidirectional(layers.RNN(layers.GRUCell(70), return_sequences=True), merge_mode='sum')(embed)
+        result_slots = layers.Activation('softmax')(rnn_slots)
+        model = models.Model(inputs=[inputs], outputs=[result_intents, result_slots])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='rmsprop')
+        self.model = model
 
     def train_on_batch(self, x:List[Any], y_intent_ids:List[Any], y_slot_ids:List[Any]):
-        print('train_on_batch called')
-        print('===> X', 'len', len(x), 'data', x)
-        print('===> YI', 'len', len(y_intent_ids), 'data', y_intent_ids)
-        print('===> YS', 'len', len(y_slot_ids), 'data', y_slot_ids)
-        pass
+        x = pad_sequences(x)
+        y_slot_ids = pad_sequences(y_slot_ids)
+        self.model.train_on_batch(x, [y_intent_ids, y_slot_ids])
+        print("batch")
 
     def process_event(self, event_name, data):
         print('process_event called, event', event_name)
