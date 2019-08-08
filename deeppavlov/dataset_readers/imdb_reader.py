@@ -53,13 +53,24 @@ class ImdbReader(DatasetReader):
             download_decompress(url, data_path)
             mark_done(data_path)
 
+        alternative_data_path = data_path / "aclImdb"
+        if alternative_data_path.exists():
+            data_path = alternative_data_path
+
         data = {"train": [],
                 "test": []}
         for data_type in data.keys():
             for label in ["neg", "pos"]:
-                for filename in (Path(data_path) / data_type / label).glob("*.txt"):
+                labelpath = Path(data_path) / data_type / label
+                if not labelpath.exists():
+                    raise RuntimeError(f"Cannot load data: {labelpath} does not exist")
+                for filename in labelpath.glob("*.txt"):
                     with filename.open() as f:
                         text = f.read()
                     data[data_type].append((text, label))
+
+            if not data[data_type]:
+                raise RuntimeError(f"Could not load the '{data_type}' dataset, "
+                                   "probably data dirs are empty")
 
         return data
