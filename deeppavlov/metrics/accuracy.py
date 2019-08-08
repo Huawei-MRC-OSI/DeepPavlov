@@ -49,8 +49,13 @@ def sets_accuracy(y_true: [list, np.ndarray], y_predicted: [list, np.ndarray]) -
     Returns:
         portion of samples with absolutely coincidental sets of predicted values
     """
+    def _to_set(val):
+        if isinstance(val, (list, tuple, set)):
+            return set(val)
+        else:
+            return {val}
     examples_len = len(y_true)
-    correct = sum([set(y1) == set(y2) for y1, y2 in zip(y_true, y_predicted)])
+    correct = sum([_to_set(y1) == _to_set(y2) for y1, y2 in zip(y_true, y_predicted)])
     return correct / examples_len if examples_len else 0
 
 
