@@ -26,12 +26,12 @@ from tensorflow.keras import models
 
 @register('intent_slot_classifier')
 class IntentSlotClassifier(LRScheduledModel):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, n_intents=7, n_slots=70, vocab_size=5000, *args, **kwargs):
         inputs = layers.Input(shape=(None,))
-        embed = layers.Embedding(5000, 18, mask_zero=True)(inputs)
+        embed = layers.Embedding(vocab_size, 18, mask_zero=True)(inputs)
         rnn_intents = layers.Bidirectional(layers.RNN(layers.GRUCell(256)))(embed)
-        result_intents = layers.Dense(7, activation='softmax')(rnn_intents)
-        rnn_slots = layers.Bidirectional(layers.RNN(layers.GRUCell(70), return_sequences=True), merge_mode='sum')(embed)
+        result_intents = layers.Dense(n_intents, activation='softmax')(rnn_intents)
+        rnn_slots = layers.Bidirectional(layers.RNN(layers.GRUCell(n_slots), return_sequences=True), merge_mode='sum')(embed)
         result_slots = layers.Activation('softmax')(rnn_slots)
         model = models.Model(inputs=[inputs], outputs=[result_intents, result_slots])
         model.compile(loss='sparse_categorical_crossentropy', optimizer='rmsprop')

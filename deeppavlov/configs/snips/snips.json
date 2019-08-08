@@ -11,13 +11,50 @@
   },
 
   "chainer": {
-    "in": ["word_ids"],
-    "in_y": ["true_intent_id", "true_slot_ids"],
+    "in": ["words"],
+    "in_y": ["true_intent", "true_slots"],
 
     "pipe": [
       {
+        "id": "intents_vocab",
+	"class_name": "simple_vocab",
+	"fit_on": ["true_intent"],
+	"save_path": "{MODELS_PATH}/intents.dict",
+	"load_path": "{MODELS_PATH}/intents.dict",
+	"in": "true_intent",
+	"out" : "true_intent_id"
+      },
+      {
+        "id": "slots_vocab",
+	"class_name": "simple_vocab",
+	"fit_on": ["true_slots"],
+	"save_path": "{MODELS_PATH}/slots.dict",
+	"load_path": "{MODELS_PATH}/slots.dict",
+	"in": "true_slots",
+	"out" : "true_slot_ids"
+      },
+      {
+        "in": ["words"],
+	"out": ["lower_words"],
+	"class_name": "str_lower"
+      },
+      {
+        "id": "words_vocab",
+	"class_name": "simple_vocab",
+	"fit_on": [
+          "lower_words"
+	],
+	"save_path": "{MODELS_PATH}/words.dict",
+	"load_path": "{MODELS_PATH}/words.dict",
+	"in": "lower_words",
+	"out" : "word_ids"
+      },
+      {
         "class_name": "intent_slot_classifier",
         "id": "model",
+	"n_intents": "#intents_vocab.len",
+	"n_slots": "#slots_vocab.len",
+	"vocab_size": "#words_vocab.len",
         "in": ["word_ids"],
         "in_y": ["true_intent_id", "true_slot_ids"],
         "out": ["pred_intent_id", "pred_slot_ids"]
