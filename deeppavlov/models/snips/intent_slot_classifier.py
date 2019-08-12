@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+from pathlib import Path
 
 from deeppavlov.core.models.nn_model import NNModel
 from deeppavlov.core.models.lr_scheduled_model import LRScheduledModel
@@ -26,29 +27,36 @@ from tensorflow.keras import models
 
 @register('intent_slot_classifier')
 class IntentSlotClassifier(LRScheduledModel):
-    def __init__(self, n_intents=7, n_slots=70, vocab_size=5000, *args, **kwargs):
-        inputs = layers.Input(shape=(None,))
-        embed = layers.Embedding(vocab_size, 18, mask_zero=True)(inputs)
-        rnn_intents = layers.Bidirectional(layers.RNN(layers.GRUCell(256)))(embed)
-        result_intents = layers.Dense(n_intents, activation='softmax')(rnn_intents)
-        rnn_slots = layers.Bidirectional(layers.RNN(layers.GRUCell(n_slots), return_sequences=True), merge_mode='sum')(embed)
-        result_slots = layers.Activation('softmax')(rnn_slots)
-        model = models.Model(inputs=[inputs], outputs=[result_intents, result_slots])
-        model.compile(loss='sparse_categorical_crossentropy', optimizer='rmsprop')
-        self.model = model
+    def __init__(self, n_intents=7, n_slots=70, vocab_size=5000, save_path=None, *args, **kwargs):
+        self.n_intents = n_intents
+        self.n_slots = n_slots
+        self.vocab_size = vocab_size
+        self.save_path = save_path
+        self.load()
+        self.model.summary()
 
     def train_on_batch(self, x:List[Any], y_intent_ids:List[Any], y_slot_ids:List[Any]):
         x = pad_sequences(x)
         y_slot_ids = pad_sequences(y_slot_ids)
         self.model.train_on_batch(x, [y_intent_ids, y_slot_ids])
-        print("batch")
+
+    def infer_on_batch(self, x:List[Any], y_intent_ids:List[Any]=None, y_slot_ids:List[Any]=None):
+        x = pad_sequences(x)
+        if y_intent_ids:
+            y_slot_ids = pad_sequences(y_slot_ids)
+            metrics_values = self.model.test_on_batch(x, [y_intent_ids, y_slot_ids])
+            return metrics_values
+        else:
+            predictions = self.model.predict(x)
+            return predictions
 
     def process_event(self, event_name, data):
-        print('process_event called, event', event_name)
         pass
 
     def save(self):
-        print('save called')
+        if self.save_path:
+            model.save(save_path)
+        pass
 
     def __call__(self, data: List[List[np.ndarray]], *args) -> List[List[float]]:
         """
@@ -63,7 +71,25 @@ class IntentSlotClassifier(LRScheduledModel):
                 vector of probabilities to belong with each class
                 or list of labels sentence belongs with
         """
-        # preds = np.array(self.infer_on_batch(data), dtype="float64").tolist()
-        print('__call__ called')
-        return list(map(lambda words: [0.0], data))
+        preds = self.infer_on_batch(data)
+        preds = [np.array(preds[0], dtype="float64").tolist(), np.array(preds[1], dtype="float64").tolist()]
+        return preds
+
+    def load(self):
+        if self.save_path and Path(self.save_path).exists():
+            model = models.load_model(self.save_path)
+        else:
+            model = self.get_model()
+        self.model = model
+
+    def get_model(self):
+        inputs = layers.Input(shape=(None,))
+        embed = layers.Embedding(self.vocab_size, 18, mask_zero=True)(inputs)
+        rnn_intents = layers.Bidirectional(layers.RNN(layers.GRUCell(256)))(embed)
+        result_intents = layers.Dense(self.n_intents, activation='softmax')(rnn_intents)
+        rnn_slots = layers.Bidirectional(layers.RNN(layers.GRUCell(self.n_slots), return_sequences=True), merge_mode='sum')(embed)
+        result_slots = layers.Activation('softmax')(rnn_slots)
+        model = models.Model(inputs=[inputs], outputs=[result_intents, result_slots])
+        model.compile(loss='sparse_categorical_crossentropy', optimizer='adam')
+        return model
 

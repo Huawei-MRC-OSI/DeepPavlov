@@ -41,9 +41,7 @@
       {
         "id": "words_vocab",
 	"class_name": "simple_vocab",
-	"fit_on": [
-          "lower_words"
-	],
+	"fit_on": ["lower_words"],
 	"save_path": "{MODELS_PATH}/words.dict",
 	"load_path": "{MODELS_PATH}/words.dict",
 	"in": "lower_words",
@@ -67,11 +65,11 @@
     "show_examples": false,
     "log_every_n_batches": 250,
     "val_every_n_epochs": 1,
-    "batch_size": 4,
+    "batch_size": 16,
     "metrics": [
       {
         "name": "accuracy",
-        "inputs": ["pred_intent_id", "true_intent_id"]
+        "inputs": ["pred_intent_id", "pred_intent_id"]
       }
     ],
     "evaluation_targets": ["train","valid"],
