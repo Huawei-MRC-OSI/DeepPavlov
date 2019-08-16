@@ -124,7 +124,7 @@ class NNTrainer(FitTrainer):
         self.patience = 0
         self.last_result = {}
         self.losses = []
-        self.start_time = None
+        self.start_time = None # type:Optional[float]
 
         if self.tensorboard_log_dir is not None:
             self.tb_train_writer = self._tf.summary.FileWriter(str(self.tensorboard_log_dir / 'train_log'))
@@ -245,6 +245,7 @@ class NNTrainer(FitTrainer):
                 if 'loss' in self.last_result:
                     self.losses.append(self.last_result.pop('loss'))
 
+                self._saved = False
                 self.train_batches_seen += 1
                 self.examples += len(x)
 
