@@ -401,7 +401,7 @@ class TestQuickStart(object):
                                            timeout=None, logfile=logfile)
         try:
             p.expect(url_base)
-            post_response = requests.post(url, json=post_payload, headers=post_headers)
+            post_response = requests.post(url, json=post_payload, headers=post_headers, verify=False, timeout=5)
             response_code = post_response.status_code
             assert response_code == 200, f"POST request returned error code {response_code} with {config_path}"
 

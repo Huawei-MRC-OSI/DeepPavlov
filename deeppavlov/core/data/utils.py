@@ -57,7 +57,7 @@ def simple_download(url: str, destination: [Path, str]):
     destination.parent.mkdir(parents=True, exist_ok=True)
 
     headers = {'dp-token': get_download_token()}
-    r = requests.get(url, stream=True, headers=headers)
+    r = requests.get(url, stream=True, headers=headers, verify=False)
     total_length = int(r.headers.get('content-length', 0))
 
     log.info('Downloading from {} to {}'.format(url, destination))

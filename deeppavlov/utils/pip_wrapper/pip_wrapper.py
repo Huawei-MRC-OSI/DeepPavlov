@@ -18,7 +18,7 @@ def install(*packages):
                                                              env=os.environ.copy()):
         log.warn('found tensorflow-gpu installed, so upgrading it instead of tensorflow')
         packages = [_tf_re.sub(r'tensorflow-gpu\1', package) for package in packages]
-    result = subprocess.check_call([sys.executable, '-m', 'pip', 'install',
+    result = subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--user',
                                    *[re.sub(r'\s', '', package) for package in packages]],
                                    env=os.environ.copy())
     return result
