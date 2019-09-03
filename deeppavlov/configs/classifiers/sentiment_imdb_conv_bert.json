@@ -30,7 +30,7 @@
         "class_name": "bert_preprocessor",
         "vocab_file": "{DOWNLOADS_PATH}/bert_models/conversational_cased_L-12_H-768_A-12/vocab.txt",
         "do_lower_case": false,
-        "max_seq_length": 450,
+        "max_seq_length": 500,
         "in": [
           "x"
         ],
@@ -67,7 +67,7 @@
         "load_path": "{MODEL_PATH}/model",
         "keep_prob": 0.5,
         "learning_rate": 1e-05,
-        "learning_rate_drop_patience": 5,
+        "learning_rate_drop_patience": 1,
         "learning_rate_drop_div": 2.0,
         "in": [
           "bert_features"
@@ -112,7 +112,7 @@
     ],
     "show_examples": false,
     "pytest_max_batches": 2,
-    "validation_patience": 5,
+    "validation_patience": 3,
     "val_every_n_epochs": 1,
     "log_every_n_epochs": 1,
     "evaluation_targets": [
